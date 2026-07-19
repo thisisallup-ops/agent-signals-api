@@ -1,0 +1,5 @@
+fastapi
+   uvicorn
+   x402==2.16.0
+   yfinance
+   pandas
