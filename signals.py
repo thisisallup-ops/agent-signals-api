@@ -381,7 +381,11 @@ def get_todays_signals() -> dict:
     return _compute_signals(datetime.now(timezone.utc))
 
 def get_free_sample() -> dict:
+    """Yesterday's signal (free)."""
     yesterday = datetime.now(timezone.utc) - timedelta(days=1)
+    # Make sure yesterday is tz-aware
+    if yesterday.tzinfo is None:
+        yesterday = yesterday.replace(tzinfo=timezone.utc)
     data = _compute_signals(yesterday)
     data["note"] = "FREE SAMPLE (yesterday's signal). Pay /signals for today's."
     return data
