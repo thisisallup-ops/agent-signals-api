@@ -354,25 +354,36 @@ def main():
 # ---------------------------------------------------------------------------
 _cache = {"date": None, "data": None}
 
-def _compute_signals(for_date: datetime) -> dict:
+_cache = {"date": None, "data": None}
+
+def _compute_signals(for_date) -> dict:
+    """Core computation with robust date handling."""
     global _cache
-    today_str = for_date.date().isoformat()
-    if _cache.get("date") == today_str and _cache.get("data"):
+    # Normalize to date only
+    if hasattr(for_date, 'date'):
+        date_key = for_date.date().isoformat()
+    else:
+        date_key = for_date.isoformat()[:10]
+    
+    if _cache.get("date") == date_key and _cache.get("data"):
         return _cache["data"]
+    
     try:
+        # Use naive date for your functions
+        naive_date = for_date.date() if hasattr(for_date, 'date') else for_date
         wide_close = load_price_data(ALL_SYMBOLS)
-        all_outlooks = [build_outlook(wide_close, sym, for_date) for sym in PRIMARY_SYMBOLS if sym in wide_close.columns]
-        section_c_rows = build_section_c_table(wide_close, for_date, FULL_WATCHLIST)
+        all_outlooks = [build_outlook(wide_close, sym, naive_date) for sym in PRIMARY_SYMBOLS if sym in wide_close.columns]
+        section_c_rows = build_section_c_table(wide_close, naive_date, FULL_WATCHLIST)
         section_d_rows = build_section_d_table(wide_close, FULL_WATCHLIST)
         result = {
-            "date": today_str,
+            "date": date_key,
             "primary_outlooks": all_outlooks,
             "section_c_weekly_table": section_c_rows,
             "section_d_weekday_distribution": section_d_rows,
             "disclaimer": "Historical statistics only. Not financial advice.",
             "generated_at_utc": datetime.now(timezone.utc).isoformat()
         }
-        _cache = {"date": today_str, "data": result}
+        _cache = {"date": date_key, "data": result}
         return result
     except Exception as e:
         return {"error": str(e)}
@@ -383,9 +394,6 @@ def get_todays_signals() -> dict:
 def get_free_sample() -> dict:
     """Yesterday's signal (free)."""
     yesterday = datetime.now(timezone.utc) - timedelta(days=1)
-    # Make sure yesterday is tz-aware
-    if yesterday.tzinfo is None:
-        yesterday = yesterday.replace(tzinfo=timezone.utc)
     data = _compute_signals(yesterday)
     data["note"] = "FREE SAMPLE (yesterday's signal). Pay /signals for today's."
     return data
